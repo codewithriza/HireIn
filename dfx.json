@@ -1,0 +1,26 @@
+{
+  "canisters": {
+    "Velero_backend": {
+      "main": "src/Velero_backend/main.mo",
+      "type": "motoko"
+    },
+    "Velero_frontend": {
+      "dependencies": [
+        "Velero_backend"
+      ],
+      "source": [
+        "src/Velero_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "Velero_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

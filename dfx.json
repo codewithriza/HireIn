@@ -1,0 +1,39 @@
+{
+  "canisters": {
+    "recipro_backend": {
+      "candid": "src/recipro_backend/recipro_backend.did",
+      "package": "recipro_backend",
+      "type": "rust"
+    },
+    "recipro_frontend": {
+      "dependencies": [
+        "recipro_backend"
+      ],
+      "source": [
+        "src/recipro_frontend"
+      ],
+      "type": "assets",
+      "frontend": {
+        "entrypoint": "src/recipro_frontend/index.html"
+      }
+    }
+  },"internet_identity": {
+  "type": "custom",
+  "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+  "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
+  "remote": {
+    "id": {
+      "ic": "uqqxf-5h777-77774-qaaaa-cai"
+    }
+  },
+  "frontend": {}
+},
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

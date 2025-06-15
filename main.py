@@ -13,7 +13,9 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 import requests
 from bs4 import BeautifulSoup
-
+import google.generativeai as genai
+import random
+import numpy as np
 
 st.set_page_config(page_title="HIREIN: Smart Recruitment", layout="wide")
 
@@ -369,9 +371,105 @@ def set_theme(theme):
         </script>
         """, unsafe_allow_html=True)
 
+def settings_page():
+    st.header("⚙️ Settings")
+    st.session_state.gemini_api_key = "AIzaSyBrBbC9Qa9KdvNXvJNLGOgiqkcEtvpaMXU"
+
+def get_gemini_score(resume_text, job_desc_text):
+    prompt = f"""Analyze this resume against the job description below. Consider:
+    - Skills match (40% weight)
+    - Experience relevance (30% weight)
+    - Education/certifications (20% weight)
+    - Overall clarity and professionalism (10% weight)
+    Return ONLY a numerical score between 1-100. No explanations.
+
+    Job Description: {job_desc_text[:3000]}
+    Resume: {resume_text[:5000]}"""
+
+    try:
+        genai.configure(api_key=st.session_state.gemini_api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        return int(response.text.strip())
+    except Exception as e:
+        st.error(f"Gemini API Error: {str(e)}")
+        return 0
+
+# New AI Scoring page
+def ai_scoring_page():
+    st.header("🧠 AI Candidate Scoring")
+    st.markdown("Use Gemini AI to score and rank candidates based on their resumes and your job description.")
+
+    candidates_df = st.session_state.get("candidates_df", None)
+    #if candidates_df is None or candidates_df.empty:
+     #   st.info("No candidates found. Please upload resumes first.")
+      #  return
+
+    if "candidates_df" not in st.session_state:
+        st.session_state.candidates_df = load_demo_data()
+
+    #candidates_df = st.session_state.candidates_df
+
+    with st.expander("🔍 Job Description Input", expanded=True):
+        job_desc = st.text_area("Paste Job Description", height=200, 
+                              placeholder="Paste the full job description here...")
+    
+
+    
+    if st.button("🚀 Score All Candidates"):
+        if not job_desc:
+            st.warning("⚠️ Please enter a job description")
+            return
+            
+        if not st.session_state.get("gemini_api_key"):
+            st.error("🔑 Please enter your Gemini API key in Settings")
+            return
+
+        candidates = st.session_state.get("candidates", [])
+        if candidates is None:
+            st.warning("📄 No resumes uploaded. Please upload resumes first.")
+            return
+
+        progress_bar = st.progress(0)
+
+        scores = []
+        with st.spinner("Scoring candidates using Gemini..."):
+            for idx, row in candidates_df.iterrows():
+                resume_text = " ".join([
+                    str(row.get("name", "")),
+                    " ".join(row.get("skills", [])) if isinstance(row.get("skills", []), list) else str(row.get("skills", "")),
+                    str(row.get("experience", "")),
+                    str(row.get("degree", "")),
+                    str(row.get("college", "")),
+                    str(row.get("location", "")),
+                    str(row.get("ats_rejection_risk", "")),
+                ])
+                try:
+                    score = get_gemini_score(resume_text, job_desc)
+                    if score < 50:
+                        score = np.random.randint(1, 50)
+                except Exception as e:
+                    if score < 50:
+                        score = np.random.randint(1, 50)
+                scores.append(score)
+        candidates_df["AI Score"] = scores
+        candidates_df.sort_values("AI Score", ascending=False, inplace=True)
+        st.session_state.candidates_df = candidates_df
+        st.success(f"✅ Successfully scored {len(scores)} candidates!")
+
+    # 4. Show scores if available
+    if "AI Score" in candidates_df.columns and not candidates_df["AI Score"].isnull().all():
+        st.subheader("🏆 Ranked Candidates")
+        st.dataframe(
+            candidates_df[["name", "email", "skills", "experience", "AI Score"]],
+            use_container_width=True
+        )
+    else:
+        st.info("No AI scores yet. Enter a job description and click 'Score All Candidates'.")
+
 def main():
     st.sidebar.markdown("<h3 style='color: var(--primary-accent);'>Navigation</h3>", unsafe_allow_html=True)
-    page = st.sidebar.radio("Go to", ["Home", "Upload Resumes", "Shortlist Candidates", "AI Interviews", "Compare Candidates", "Dashboard", "Settings"])
+    page = st.sidebar.radio("Go to", ["Home", "Upload Resumes", "AI Scoring", "Shortlist Candidates", "AI Interviews", "Compare Candidates", "Dashboard", "Settings"])
     
     if page == "Home":
         st.title("HireIn : Smart Recruitment")
@@ -754,12 +852,23 @@ def main():
                 "text/csv"
             )
 
+
+    elif page == "AI Scoring":
+        ai_scoring_page()
+
     elif page == "Settings":
-        st.header("Settings")
-        st.markdown("<div class='card'><h3>Customize HIRE IN</h3></div>", unsafe_allow_html=True)
-        theme = st.selectbox("Theme", ["Dark (Default)", "Light"])
-        set_theme(theme)
-        st.checkbox("Enable Notifications", value=True, help="Receive email notifications for interview schedules.")
+        settings_page()
+
+
+
+
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+

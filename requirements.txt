@@ -1,0 +1,7 @@
+streamlit
+pandas
+PyPDF2
+textblob
+reportlab
+requests
+beautifulsoup4

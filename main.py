@@ -130,7 +130,7 @@ h1, h2, h3 {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
-st.sidebar.image("/Users/macbookpro/Desktop/hackprix/job/logo.jpg", width=200)
+st.sidebar.image("https://hiri.ai/static/media/first-sec-element.7bd7e84a3ce6926c606935cc334569ce.svg", width=200)
 st.sidebar.title("HireIn AI")
 
 def extract_text_from_pdf(file):
@@ -381,7 +381,7 @@ def main():
         <p style='font-size: 18px;'>Revolutionizing hiring for India: Seamlessly manage thousands of applications with AI-driven resume parsing, candidate shortlisting, mock interviews, and actionable insights.</p>
         </div>
         """, unsafe_allow_html=True)
-        st.image("/Users/macbookpro/Desktop/hackprix/job/banner.png", caption="Streamline Your Hiring Process")
+        st.image("https://media.licdn.com/dms/image/v2/D5612AQGYl-wj9KeEQg/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1682492036868?e=2147483647&v=beta&t=LroVogH0lzM7zTfNeRLg62866PG3C0OQJinvX3RFIBQ", caption="Streamline Your Hiring Process")
         if st.button("🚀 Try Demo Mode"):
             st.session_state["candidates"] = load_demo_data()
             st.session_state["ranked"] = False

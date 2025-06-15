@@ -130,7 +130,7 @@ h1, h2, h3 {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
-st.sidebar.image("https://media.discordapp.net/attachments/1355795293198745762/1383678608236871720/logo-removebg-preview.png?ex=684faa9f&is=684e591f&hm=a0b57262c2dc9a800ea3c460fb549b8f51bd77ab8486a588ebf31af8d9cf5de4&=&format=webp&quality=lossless&width=1100&height=1100", width=200)
+st.sidebar.image("https://media.discordapp.net/attachments/1355795293198745762/1383678608236871720/logo-removebg-preview.png?ex=684faa9f&is=684e591f&hm=a0b57262c2dc9a800ea3c460fb549b8f51bd77ab8486a588ebf31af8d9cf5de4&=&format=webp&quality=lossless&width=1100&height=1100", width=300)
 st.sidebar.title("HireIn AI")
 
 def extract_text_from_pdf(file):

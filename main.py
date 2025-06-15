@@ -373,8 +373,8 @@ def set_theme(theme):
 
 def settings_page():
     st.header("⚙️ Settings")
-    st.session_state.gemini_api_key = "AIzaSyBrBbC9Qa9KdvNXvJNLGOgiqkcEtvpaMXU"
-
+    st.session_state.gemini_api_key = st.text_input("Enter Gemini API Key:", type="password")
+    
 def get_gemini_score(resume_text, job_desc_text):
     prompt = f"""Analyze this resume against the job description below. Consider:
     - Skills match (40% weight)

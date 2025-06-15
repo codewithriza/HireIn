@@ -1,3 +1,4 @@
+
 # Import Streamlit for building the web application interface
 import streamlit as st
 # Import pandas for data manipulation and analysis
@@ -34,8 +35,6 @@ from dotenv import load_dotenv
 # Import Plotly for creating interactive visualizations
 import plotly.express as px
 import plotly.graph_objects as go
-# Import CrewAI components for defining AI agents and tasks
-from crewai import Agent, Task, Crew, Process
 
 # Load environment variables from .env file (e.g., SMTP credentials)
 load_dotenv()
@@ -181,6 +180,51 @@ h1, h2, h3 {
 .glow-effect {
     animation: glow 2s infinite;
 }
+
+/* Style for enhanced metric cards */
+.metric-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, #252550 100%);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin: 10px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-height: 120px;
+}
+
+/* Metric card hover effects */
+.metric-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Style for metric values */
+.metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-accent);
+    margin: 0;
+}
+
+/* Style for metric labels */
+.metric-label {
+    font-size: 16px;
+    color: #a0a0c0;
+    margin: 0;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
 </style>
 <!-- Import Roboto font from Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -244,66 +288,6 @@ def calculate_language_expertise(resume_text, job_desc):
         "primary_language": max(depth_scores, key=depth_scores.get, default="None"),
         "language_count": len(set(resume_skills))
     }
-
-# Set up CrewAI agents for resume processing
-def setup_crewai_agents(resumes, job_desc):
-    # Define resume parser agent
-    resume_parser = Agent(
-        role="Resume Parser",
-        goal="Extract and score candidate resumes using CATSOne ATS and language expertise logic",
-        backstory="Expert in resume analysis with proficiency in ATS systems and programming language evaluation",
-        verbose=True,
-        allow_delegation=False
-    )
-    
-    # Define candidate sorter agent
-    candidate_sorter = Agent(
-        role="Candidate Sorter",
-        goal="Rank candidates based on combined ATS, match, and language expertise scores",
-        backstory="Specialist in candidate evaluation and ranking for recruitment",
-        verbose=True,
-        allow_delegation=False
-    )
-    
-    # Define report generator agent
-    report_generator = Agent(
-        role="Report Generator",
-        goal="Generate comprehensive dashboard reports and PDFs",
-        backstory="Experienced in data visualization and report creation for recruitment insights",
-        verbose=True,
-        allow_delegation=False
-    )
-    
-    # Define resume parsing task
-    parse_task = Task(
-        description="Parse resumes, fetch CATSOne ATS scores, calculate match scores, and evaluate language expertise",
-        expected_output="DataFrame with candidate data including ATS scores, match scores, and language expertise",
-        agent=resume_parser
-    )
-    
-    # Define sorting task
-    sort_task = Task(
-        description="Sort candidates based on a weighted combination of ATS, match, and language expertise scores",
-        expected_output="Sorted DataFrame of candidates",
-        agent=candidate_sorter
-    )
-    
-    # Define reporting task
-    report_task = Task(
-        description="Generate dashboard insights and a PDF report summarizing candidate data",
-        expected_output="Dashboard data and PDF buffer",
-        agent=report_generator
-    )
-    
-    # Create CrewAI crew with agents and tasks
-    crew = Crew(
-        agents=[resume_parser, candidate_sorter, report_generator],
-        tasks=[parse_task, sort_task, report_task],
-        verbose=True,
-        process=Process.sequential
-    )
-    
-    return crew
 
 # Extract text from a PDF file
 def extract_text_from_pdf(file):
@@ -526,7 +510,7 @@ def generate_pdf_report(candidates_df):
     return buffer
 
 # Generate dashboard PDF report
-def generate_dashboard_pdf(candidates_df, skill_counts, missing_skills_counts, source_counts, lang_counts):
+def generate_dashboard_pdf(candidates_df, skill_counts, lang_counts):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     elements = []
@@ -556,22 +540,6 @@ def generate_dashboard_pdf(candidates_df, skill_counts, missing_skills_counts, s
         ('GRID', (0, 0), (-1, -1), 1, colors.white)
     ]))
     elements.append(metrics_table)
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph("Top Missing Skills", styles['Heading2']))
-    missing_skills_data = [[skill, str(count)] for skill, count in missing_skills_counts.head(5).items()]
-    missing_skills_table = Table([["Skill", "Count"]] + missing_skills_data)
-    missing_skills_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1a1a38")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#242450")),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.white)
-    ]))
-    elements.append(missing_skills_table)
     doc.build(elements)
     buffer.seek(0)
     return buffer
@@ -587,7 +555,7 @@ def send_bulk_email(sender_email, sender_password, subject, body, candidates_df,
         sent_count = 0
         invalid_emails = []
         for _, candidate in candidates_df[candidates_df["name"].isin(selected_candidates)].iterrows():
-            if not candidate["email"] or not re.match(r'[\w\.-]+@[\w\.-]+', candidate["email"]):
+            if not candidate["email"] or not re.match(r'[\w\.-]+@[\w\.-]+\.\w+', candidate["email"]):
                 invalid_emails.append(candidate["name"])
                 continue
             msg = MIMEMultipart()
@@ -627,37 +595,6 @@ def load_demo_data():
     ]
     return pd.DataFrame(demo_data)
 
-# Set theme (light or dark)
-def set_theme(theme):
-    if theme == "Light":
-        # Apply light theme CSS
-        st.markdown("""
-        <script>
-        document.documentElement.style.setProperty('--background-color', '#f9fafb');
-        document.documentElement.style.setProperty('--text-color', '#1f2937');
-        document.documentElement.style.setProperty('--primary-accent', '#ff4b4b');
-        document.documentElement.style.setProperty('--secondary-accent', '#e5e7eb');
-        document.documentElement.style.setProperty('--card-bg', '#ffffff');
-        document.documentElement.style.setProperty('--input-bg', '#f3f4f6');
-        document.documentElement.style.setProperty('--button-bg', '#ff4b4b');
-        document.documentElement.style.setProperty('--button-hover-bg', '#d43a3a');
-        </script>
-        """, unsafe_allow_html=True)
-    else:
-        # Apply dark theme CSS
-        st.markdown("""
-        <script>
-        document.documentElement.style.setProperty('--background-color', '#0e0e20');
-        document.documentElement.style.setProperty('--text-color', '#d4d4f4');
-        document.documentElement.style.setProperty('--primary-accent', '#ff4b4b');
-        document.documentElement.style.setProperty('--secondary-accent', '#2a2a50');
-        document.documentElement.style.setProperty('--card-bg', '#1a1a38');
-        document.documentElement.style.setProperty('--input-bg', '#242450');
-        document.documentElement.style.setProperty('--button-bg', '#ff4b4b');
-        document.documentElement.style.setProperty('--button-hover-bg', '#d43a3a');
-        </script>
-        """, unsafe_allow_html=True)
-
 # Main application logic
 def main():
     # Add navigation header to sidebar
@@ -667,11 +604,11 @@ def main():
     
     if page == "Home":
         # Display app title
-        st.title("HireIn : Smart Recruitment")
-        # Display app description in a styled card
+        st.title("HireIn: Smart Recruitment")
+        # Display updated subtitle in a styled card
         st.markdown("""
         <div class='card glow-effect'>
-        <p style='font-size: 18px;'>Revolutionizing hiring with AI-driven resume parsing, CATSOne ATS integration, language expertise sorting, and CrewAI automation. Built for efficiency and precision.</p>
+        <p style='font-size: 18px;'>HireIn is a fast, AI-powered hiring tool that reads resumes, matches candidates to job roles, auto-generates interview questions, and gives you smart insights.</p>
         </div>
         """, unsafe_allow_html=True)
         # Display promotional image
@@ -697,9 +634,9 @@ def main():
             st.info("Simulated: Fetched 5 resumes. Use the file uploader for now.")
         if uploaded_files:
             # Button to analyze resumes
-            if st.button("Analyze Resumes with CrewAI"):
+            if st.button("Analyze Resumes"):
                 # Show spinner during analysis
-                with st.spinner("Analyzing resumes with AI agents..."):
+                with st.spinner("Analyzing resumes..."):
                     results = []
                     # Get job description from session state
                     job_desc = st.session_state.get("job_desc", {"skills": "Python, JavaScript", "experience": 3.0})
@@ -723,19 +660,9 @@ def main():
                     if results:
                         # Create DataFrame from results
                         candidates_df = pd.DataFrame(results)
-                        # Set up CrewAI pipeline
-                        crew = setup_crewai_agents(candidates_df.to_dict('records'), job_desc)
-                        with st.spinner("Running CrewAI pipeline..."):
-                            try:
-                                # Run CrewAI
-                                crew.kickoff()
-                                st.write("CrewAI Agent Logs: Parsing, sorting, and reporting completed successfully.")
-                            except Exception:
-                                # Handle demo mode
-                                st.info("CrewAI pipeline running in demo mode with simulated processing for stability.")
-                            # Store candidates in session state
-                            st.session_state["candidates"] = candidates_df
-                            st.session_state["ranked"] = False
+                        # Store candidates in session state
+                        st.session_state["candidates"] = candidates_df
+                        st.session_state["ranked"] = False
                         # Display candidates
                         st.dataframe(st.session_state["candidates"])
                         # Offer CSV download
@@ -778,7 +705,7 @@ def main():
             # Button to rank candidates
             if st.button("Match and Rank Candidates"):
                 # Show spinner during ranking
-                with st.spinner("Ranking candidates with CrewAI..."):
+                with st.spinner("Ranking candidates..."):
                     candidates_df = st.session_state["candidates"].copy()
                     # Calculate match scores
                     candidates_df["match_score"] = candidates_df.apply(
@@ -788,18 +715,8 @@ def main():
                     candidates_df["missing_skills"] = candidates_df.apply(
                         lambda row: ", ".join(skill_gap_analysis(row.to_dict(), job_desc)), axis=1
                     )
-                    # Set up CrewAI for sorting
-                    crew = setup_crewai_agents(candidates_df.to_dict('records'), job_desc)
-                    with st.spinner("Running CrewAI sorting..."):
-                        try:
-                            # Run CrewAI
-                            crew.kickoff()
-                            st.write("CrewAI Agent Logs: Sorting completed successfully.")
-                            candidates_df = candidates_df.sort_values(by="match_score", ascending=False)
-                        except Exception:
-                            # Handle demo mode
-                            st.info("CrewAI sorting running in demo mode with simulated processing for stability.")
-                            candidates_df = candidates_df.sort_values(by="match_score", ascending=False)
+                    # Sort candidates by match score
+                    candidates_df = candidates_df.sort_values(by="match_score", ascending=False)
                     # Store shortlisted candidates
                     st.session_state["shortlisted"] = candidates_df
                     st.session_state["ranked"] = True
@@ -984,8 +901,8 @@ def main():
                 for idx, (_, candidate) in enumerate(top_candidates.iterrows()):
                     with cols[idx % 3]:
                         badge_class = {"Low": "badge-low", "Medium": "badge-medium", "High": "badge-high"}
-                        github_link = f"<a href='{candidate['github_url']}' target='_blank'>GitHub</a>" if candidate['github_url'] else "No GitHub"
-                        linkedin_link = f"<a href='{candidate['linkedin_url']}' target='_blank'>LinkedIn</a>" if candidate['linkedin_url'] else "No LinkedIn"
+                        github_link = f"<a href=\"{candidate['github_url']}\" target=\"_blank\">GitHub</a>" if candidate['github_url'] else "No GitHub"
+                        linkedin_link = f"<a href=\"{candidate['linkedin_url']}\" target=\"_blank\">LinkedIn</a>" if candidate['linkedin_url'] else "No LinkedIn"
                         phone_info = candidate['phone'] if candidate['phone'] else "No Phone"
                         # Display candidate card
                         st.markdown(f"""
@@ -1043,7 +960,7 @@ def main():
             if filtered_df.empty:
                 st.warning("No candidates match the selected filters.")
             else:
-                # Display summary
+                # Display enhanced recruitment summary
                 st.subheader("📊 Recruitment Summary")
                 total_candidates = len(filtered_df)
                 avg_experience = filtered_df["experience"].mean()
@@ -1051,14 +968,69 @@ def main():
                 degree_diversity = len(filtered_df["degree"].unique())
                 avg_catsone_score = filtered_df["catsone_ats_score"].mean()
                 avg_lang_score = filtered_df["language_expertise_score"].mean()
-                # Display metrics
-                col1, col2, col3, col4, col5, col6 = st.columns(6)
-                col1.markdown(f"<div class='card glow-effect'><h3>Total Candidates</h3><p style='font-size: 24px;'>{total_candidates}</p></div>", unsafe_allow_html=True)
-                col2.markdown(f"<div class='card glow-effect'><h3>Average Experience</h3><p style='font-size: 24px;'>{avg_experience:.1f} years</p></div>", unsafe_allow_html=True)
-                col3.markdown(f"<div class='card glow-effect'><h3>Top Skills</h3><p style='font-size: 18px;'>{', '.join(top_skills)}</p></div>", unsafe_allow_html=True)
-                col4.markdown(f"<div class='card glow-effect'><h3>Degree Diversity</h3><p style='font-size: 24px;'>{degree_diversity}</p></div>", unsafe_allow_html=True)
-                col5.markdown(f"<div class='card glow-effect'><h3>Avg CATSOne ATS</h3><p style='font-size: 24px;'>{avg_catsone_score:.1f}</p></div>", unsafe_allow_html=True)
-                col6.markdown(f"<div class='card glow-effect'><h3>Avg Lang Expertise</h3><p style='font-size: 24px;'>{avg_lang_score:.1f}</p></div>", unsafe_allow_html=True)
+                # Display metrics in a responsive layout
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">👥</span>
+                        <div>
+                            <p class="metric-value">{total_candidates}</p>
+                            <p class="metric-label">Total Candidates</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">📅</span>
+                        <div>
+                            <p class="metric-value">{avg_experience:.1f} years</p>
+                            <p class="metric-label">Average Experience</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">🛠️</span>
+                        <div>
+                            <p class="metric-value">{', '.join(top_skills)}</p>
+                            <p class="metric-label">Top Skills</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                col4, col5, col6 = st.columns(3)
+                with col4:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">🎓</span>
+                        <div>
+                            <p class="metric-value">{degree_diversity}</p>
+                            <p class="metric-label">Degree Diversity</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col5:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">📈</span>
+                        <div>
+                            <p class="metric-value">{avg_catsone_score:.1f}</p>
+                            <p class="metric-label">Avg CATSOne ATS</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col6:
+                    st.markdown(f"""
+                    <div class="metric-card fade-in">
+                        <span style="font-size: 40px;">🌐</span>
+                        <div>
+                            <p class="metric-value">{avg_lang_score:.1f}</p>
+                            <p class="metric-label">Avg Lang Expertise</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 # Display skill distribution
                 st.subheader("🛠️ Skill Distribution")
                 skill_counts = pd.Series([skill for skills in filtered_df["skills"] for skill in skills]).value_counts()
@@ -1075,69 +1047,6 @@ def main():
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
                 )
                 st.plotly_chart(fig_skills, use_container_width=True)
-                # Display experience vs. score
-                st.subheader("📈 Experience vs. Score")
-                score_type = st.selectbox("Select Score Type", ["Combined Match Score", "CATSOne ATS Score", "Language Expertise Score"])
-                y_col = {"Combined Match Score": "match_score", "CATSOne ATS Score": "catsone_ats_score", "Language Expertise Score": "language_expertise_score"}[score_type]
-                fig_exp_score = px.scatter(
-                    filtered_df,
-                    x="experience",
-                    y=y_col,
-                    text="name",
-                    size=y_col,
-                    color="ats_rejection_risk",
-                    color_discrete_map={"Low": "#34D399", "Medium": "#FBBF24", "High": "#FF4B4B"},
-                    title=f"Experience vs. {score_type}"
-                )
-                fig_exp_score.update_traces(textposition="top center")
-                fig_exp_score.add_trace(
-                    go.Scatter(
-                        x=filtered_df["experience"],
-                        y=filtered_df[y_col].rolling(window=2, min_periods=1).mean(),
-                        mode="lines",
-                        name="Trend",
-                        line=dict(color="#FF4B4B", dash="dash")
-                    )
-                )
-                fig_exp_score.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_color="#d4d4f4",
-                    showlegend=True
-                )
-                st.plotly_chart(fig_exp_score, use_container_width=True)
-                # Display skill gap analysis
-                st.subheader("⚠️ Skill Gap Analysis")
-                missing_skills = [skill for row in filtered_df["missing_skills"] for skill in row.split(", ") if row]
-                missing_skills_counts = pd.Series(missing_skills).value_counts()
-                fig_missing_skills = px.bar(
-                    x=missing_skills_counts.index,
-                    y=missing_skills_counts.values,
-                    title="Top Missing Skills",
-                    labels={"x": "Skill", "y": "Number of Candidates Missing"}
-                )
-                fig_missing_skills.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_color="#d4d4f4"
-                )
-                st.plotly_chart(fig_missing_skills, use_container_width=True)
-                # Display candidate source distribution
-                st.subheader("🌐 Candidate Source Distribution")
-                source_counts = filtered_df["source"].value_counts()
-                fig_source = px.pie(
-                    names=source_counts.index,
-                    values=source_counts.values,
-                    title="Candidate Source",
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                fig_source.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_color="#d4d4f4",
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-                )
-                st.plotly_chart(fig_source, use_container_width=True)
                 # Display language expertise distribution
                 st.subheader("🗣️ Language Expertise Distribution")
                 lang_counts = filtered_df["primary_language"].value_counts()
@@ -1157,7 +1066,7 @@ def main():
                 st.subheader("Export Dashboard Insights")
                 if st.button("Download Dashboard PDF"):
                     with st.spinner("Generating PDF report..."):
-                        pdf_buffer = generate_dashboard_pdf(filtered_df, skill_counts, missing_skills_counts, source_counts, lang_counts)
+                        pdf_buffer = generate_dashboard_pdf(filtered_df, skill_counts, lang_counts)
                         st.download_button(
                             "Download PDF",
                             pdf_buffer,
@@ -1185,10 +1094,9 @@ def main():
     elif page == "Settings":
         # Display page header
         st.header("Settings")
-        # Theme selection
-        st.subheader("Theme")
-        theme = st.selectbox("Select Theme", ["Dark", "Light"], index=0)
-        set_theme(theme)
+        # Display GitHub repository link
+        st.subheader("Project Repository")
+        st.markdown("Explore the source code: <a href='https://github.com/codewithriza/HireIn' target='_blank'>GitHub Repository</a>", unsafe_allow_html=True)
         # SMTP configuration
         st.subheader("SMTP Configuration")
         smtp_email = st.text_input("SMTP Sender Email", value=os.getenv("SMTP_SENDER_EMAIL", ""))
